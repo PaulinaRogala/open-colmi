@@ -2,7 +2,7 @@ import asyncio
 from bleak import BleakScanner
 
 async def scan():
-    """Scan Colmi R02"""
+    """Scan Colmi R02-to find MAC address"""
     print("Scanning BLE... press Ctrl+C to interrupt")
     devices = await BleakScanner.discover()
     colmi_devices=[]

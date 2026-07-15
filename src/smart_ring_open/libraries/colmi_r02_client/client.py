@@ -49,6 +49,7 @@ COMMAND_HANDLERS: dict[int, Callable[[bytearray], Any]] = {
     hr.CMD_READ_HEART_RATE: hr.HeartRateLogParser().parse,
     set_time.CMD_SET_TIME: empty_parse,
     hr_settings.CMD_HEART_RATE_LOG_SETTINGS: hr_settings.parse_heart_rate_log_settings,
+    blink_twice.CMD_BLINK_TWICE: empty_parse
 }
 """
 TODO put these somewhere nice

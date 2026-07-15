@@ -9,7 +9,7 @@ I don't know what byte 1 in the response is.
 from dataclasses import dataclass
 import logging
 
-from colmi_r02_client.packet import make_packet
+from .packet import make_packet
 
 CMD_HEART_RATE_LOG_SETTINGS = 22  # 0x16
 

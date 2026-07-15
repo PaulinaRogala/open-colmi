@@ -8,7 +8,7 @@ We always set the time in UTC.
 from datetime import datetime, timezone
 import logging
 
-from colmi_r02_client.packet import make_packet
+from .packet import make_packet
 
 logger = logging.getLogger(__name__)
 

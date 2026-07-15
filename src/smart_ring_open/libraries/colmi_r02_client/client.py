@@ -10,7 +10,8 @@ from typing import Any
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
 
-from colmi_r02_client import battery, date_utils, steps, set_time, blink_twice, hr, hr_settings, packet, reboot, real_time
+from . import battery
+from . import blink_twice, date_utils, hr, hr_settings, packet, real_time, reboot, set_time, steps
 
 UART_SERVICE_UUID = "6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"

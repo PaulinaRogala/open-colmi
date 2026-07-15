@@ -10,7 +10,7 @@ can correct
 from dataclasses import dataclass
 from enum import IntEnum
 
-from colmi_r02_client.packet import make_packet
+from .packet import make_packet
 
 
 class Action(IntEnum):

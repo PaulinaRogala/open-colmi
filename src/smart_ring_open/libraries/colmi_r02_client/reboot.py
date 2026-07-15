@@ -1,4 +1,4 @@
-from colmi_r02_client.packet import make_packet
+from .packet import make_packet
 
 CMD_REBOOT = 8  # 0x08
 

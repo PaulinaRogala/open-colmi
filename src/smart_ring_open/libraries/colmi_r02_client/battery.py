@@ -4,7 +4,7 @@ Get the battery level and charging status.
 
 from dataclasses import dataclass
 
-from colmi_r02_client.packet import make_packet
+from .packet import make_packet
 
 CMD_BATTERY = 3
 

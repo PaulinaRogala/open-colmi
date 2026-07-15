@@ -7,9 +7,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, rela
 from sqlalchemy import select, UniqueConstraint, ForeignKey, create_engine, event, func, types
 from sqlalchemy.engine import Engine, Dialect
 
-from colmi_r02_client import hr, steps
-from colmi_r02_client.client import FullData
-from colmi_r02_client.date_utils import start_of_day, end_of_day
+from . import hr, steps
+from .client import FullData
+from .date_utils import start_of_day, end_of_day
 
 logger = logging.getLogger(__name__)
 

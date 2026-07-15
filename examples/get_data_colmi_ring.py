@@ -1,5 +1,5 @@
 import asyncio
-from smart_ring_open.libraries.colmi_r02_client import Client
+from smart_ring_open.libraries.colmi_r02_client.client import Client
 
 async def get_data():
     """Get data from Colmi R02 by MAC address"""

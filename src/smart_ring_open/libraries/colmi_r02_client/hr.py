@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import logging
 import struct
 
-from colmi_r02_client.packet import make_packet
-from colmi_r02_client import date_utils
+from .packet import make_packet
+from . import date_utils
 
 CMD_READ_HEART_RATE = 21  # 0x15
 

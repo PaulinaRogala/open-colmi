@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from colmi_r02_client.packet import make_packet
+from .packet import make_packet
 
 CMD_GET_STEP_SOMEDAY = 67  # 0x43
 

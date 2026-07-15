@@ -13,3 +13,8 @@ if __name__=="__main__":
         asyncio.run(get_data())
     except Exception as e:
         print(f"Error: {e}")
+
+#problem; blad o braku modulu smart_ring_open 
+# i prawdopodobnie dlatego ze nie ma w pyproject build-system,
+#ale usunelam bo byl problem z `uv sync`(nie dalo sie zrobic uv sync)
+# bo byl (błąd: `AttributeError: Using uv.build_editable is not allowed`)

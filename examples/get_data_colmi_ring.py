@@ -4,10 +4,12 @@ from smart_ring_open.libraries.colmi_r02_client.client import Client
 async def get_data():
     """Get data from Colmi R02 by MAC address"""
     ring_address="30:36:42:33:86:02"
+    print("Loading battery level...")
     async with Client(ring_address) as client:
-        print("Connected! Loading battery level...")
+        print("Connected!")
         battery=await client.get_battery()
-        print(f"Battery level: {battery}")
+        print(f"Battery level: {battery.battery_level}%")
+        print("Disconnected!")
 if __name__=="__main__":
     try:
         asyncio.run(get_data())

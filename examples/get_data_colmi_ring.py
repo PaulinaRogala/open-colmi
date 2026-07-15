@@ -12,27 +12,33 @@ async def get_data():
     else:
         print("Loading data from Colmi...")
         async with Client(ring_address) as client:
-            print("Connected!")
+            print("Connected!\n")
             await client.blink_twice()
             battery=await client.get_battery()
-            print(f"Battery level: {battery.battery_level}%")
+            print(f"Battery level: {battery.battery_level}%, charging: {battery.charging}\n")
             steps_data=await client.get_steps(datetime.now())
             if isinstance(steps_data, steps.NoData):
                 print("No steps data found")
             else: 
-                print(f"Steps data: {steps_data}")
+                print(f"Steps data: {steps_data}\n")
             real_time_reading_hr=await client.get_realtime_reading(real_time.RealTimeReading.HEART_RATE)
             if real_time_reading_hr:
                 i=1
                 for hr in real_time_reading_hr:
                     print(f"Real time reading HR{i}: {hr} bpm")
                     i+=1
+                print("\n")
+            else:
+                print("Put the ring on to messure HR in real-time!")
             real_time_reading_pressure=await client.get_realtime_reading(real_time.RealTimeReading.BLOOD_PRESSURE)
             if real_time_reading_pressure:
                 i=1
                 for p in real_time_reading_pressure:
                     print(f"Real time reading pressure {i}: {p}")
                     i+=1
+                print("\n")
+            else:
+                print("Put the ring on to messure blood pressure in real-time!")
             print("Disconnected!")
         
 if __name__=="__main__":

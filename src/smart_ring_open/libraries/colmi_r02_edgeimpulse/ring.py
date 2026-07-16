@@ -261,7 +261,16 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
         try:
             await asyncio.sleep(duration)  # Keep running for the specified duration
         finally:
-            await send_data_array(client, DISABLE_RAW_SENSOR_CMD, "RXTX")
+            try:
+                await client.stop_notify(RXTX_NOTIFY_CHARACTERISTIC_UUID)
+                await client.stop_notify(MAIN_NOTIFY_CHARACTERISTIC_UUID)
+            except Exception as e:
+                print(f"Error wiht stoping sensor notification: {e}")
+            try:
+                await send_data_array(client, DISABLE_RAW_SENSOR_CMD, "RXTX")
+            except Exception as e:
+                print(f"Error wiht turning off sensors: {e}")
+
             csv_file.close()
             print(f"Data saved to {filename}")
 

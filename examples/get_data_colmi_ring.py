@@ -30,15 +30,15 @@ async def get_data():
                 print("\n")
             else:
                 print("Put the ring on to messure HR in real-time!")
-            real_time_reading_pressure=await client.get_realtime_reading(real_time.RealTimeReading.BLOOD_PRESSURE)
-            if real_time_reading_pressure:
-                i=1
-                for p in real_time_reading_pressure:
-                    print(f"Real time reading pressure {i}: {p}")
-                    i+=1
-                print("\n")
-            else:
-                print("Put the ring on to messure blood pressure in real-time!")
+            # real_time_reading_pressure=await client.get_realtime_reading(real_time.RealTimeReading.BLOOD_PRESSURE)
+            # if real_time_reading_pressure:
+            #     i=1
+            #     for p in real_time_reading_pressure:
+            #         print(f"Real time reading pressure {i}: {p}")
+            #         i+=1
+            #     print("\n")
+            # else:
+            #     print("Put the ring on to messure blood pressure in real-time!")
             print("Disconnected!")
         
 if __name__=="__main__":

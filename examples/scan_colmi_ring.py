@@ -10,7 +10,7 @@ async def scan():
         return None
     device= await select_device(devices)
     if device:
-        print(f"Connected to {device}!")
+        print(f"Selected {device}!")
         return device.address
     return None
 

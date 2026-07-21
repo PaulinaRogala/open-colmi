@@ -8,6 +8,12 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import requests
+from smart_ring_open.libraries.colmi_r02_client.raw_sensor_decoder import (
+    decode_raw_sensor_packet,
+    ENABLE_RAW_SENSOR_CMD,
+    DISABLE_RAW_SENSOR_CMD,
+    PPGRawData, AccelerometerRawData, SpO2RawData
+)
 
 # UUIDs for MAIN and RXTX services and characteristics
 MAIN_SERVICE_UUID = "de5bf728-d711-4e47-af26-65e3012a5dc7"
@@ -28,8 +34,8 @@ def create_command(hex_string):
 
 BATTERY_CMD = create_command("03")
 SET_UNITS_METRICS = create_command("0a0200")
-ENABLE_RAW_SENSOR_CMD = create_command("a104")
-DISABLE_RAW_SENSOR_CMD = create_command("a102")
+# ENABLE_RAW_SENSOR_CMD = create_command("a104")
+# DISABLE_RAW_SENSOR_CMD = create_command("a102")
 
 CONFIG_FILE = "config.json"
 DATA_FOLDER = "raw_data"
@@ -156,43 +162,21 @@ csv_writer.writerow([
 ])
 
 async def handle_notification(sender: int, data: bytearray):
-
-    # Initialize parsed_data dictionary with default empty values
-    parsed_data = {
-        "payload": "", "accX": "", "accY": "", "accZ": "",
-        "ppg": "", "ppg_max": "", "ppg_min": "", "ppg_diff": "",
-        "spO2": "", "spO2_max": "", "spO2_min": "", "spO2_diff": ""
-    }
-    
-    # Store the payload as a hex string
-    parsed_data["payload"] = data.hex()
-
-    # Update parsed_data based on the sensor type
-    if data[0] == 0xA1:
-        subtype = data[1]
-        if subtype == 0x01:
-            parsed_data["spO2"] = (data[2] << 8) | data[3]
-            parsed_data["spO2_max"] = data[5]
-            parsed_data["spO2_min"] = data[7]
-            parsed_data["spO2_diff"] = data[9]
-        elif subtype == 0x02:
-            parsed_data["ppg"] = (data[2] << 8) | data[3]
-            parsed_data["ppg_max"] = (data[4] << 8) | data[5]
-            parsed_data["ppg_min"] = (data[6] << 8) | data[7]
-            parsed_data["ppg_diff"] = (data[8] << 8) | data[9]
-        elif subtype == 0x03:
-            parsed_data["accX"] = ((data[6] << 4) | (data[7] & 0xF)) - (1 << 11) if data[6] & 0x8 else ((data[6] << 4) | (data[7] & 0xF))
-            parsed_data["accY"] = ((data[2] << 4) | (data[3] & 0xF)) - (1 << 11) if data[2] & 0x8 else ((data[2] << 4) | (data[3] & 0xF))
-            parsed_data["accZ"] = ((data[4] << 4) | (data[5] & 0xF)) - (1 << 11) if data[4] & 0x8 else ((data[4] << 4) | (data[5] & 0xF))
-        
-        # Check if ppg and spO2 are equal to zero; skip writing if true
-        if parsed_data["ppg"] == 0 or parsed_data["spO2"] == 0:
-            print("Skipping data with zero ppg and spO2 values")
+        decoded = decode_raw_sensor_packet(data)
+        if decoded is None:
             return
+        timestamp=datetime.now().isoformat
+        row = [timestamp, data.hec()]
 
-        timestamp = datetime.now().isoformat()
-        csv_writer.writerow([timestamp] + [parsed_data.get(col, "") for col in parsed_data])
-        print("Written to CSV:", [timestamp] + [parsed_data.get(col, "") for col in parsed_data])  # Confirm write
+        if isinstance(decoded, PPGRawData):
+            row += ["", "", "", decoded.ppg, decoded.ppg_max, decoded.ppg_min, decoded.ppg_diff]
+        elif isinstance(decoded,AccelerometerRawData):
+            row+=[decoded.accX,decoded.accY,decoded.accZ, '','','','','','','','']
+        elif isinstance(decoded, SpO2RawData):
+            row += ["", "", "", "", "", "", "", decoded.spo2, decoded.spo2_max, decoded.spo2_min, decoded.spo2_diff]
+            
+        csv_writer.writerow(row)
+        print("Written to CSV:", [timestamp] + [data.get(col, "") for col in data])  # Confirm write
 
     # Print parsed data to verify the values
     # print("Received data:", parsed_data)
@@ -265,11 +249,11 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
                 await client.stop_notify(RXTX_NOTIFY_CHARACTERISTIC_UUID)
                 await client.stop_notify(MAIN_NOTIFY_CHARACTERISTIC_UUID)
             except Exception as e:
-                print(f"Error wiht stoping sensor notification: {e}")
+                print(f"Error with stoping sensor notification: {e}")
             try:
                 await send_data_array(client, DISABLE_RAW_SENSOR_CMD, "RXTX")
             except Exception as e:
-                print(f"Error wiht turning off sensors: {e}")
+                print(f"Error wiht turning sensors off: {e}")
 
             csv_file.close()
             print(f"Data saved to {filename}")

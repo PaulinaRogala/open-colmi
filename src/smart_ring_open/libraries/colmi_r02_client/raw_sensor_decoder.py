@@ -2,13 +2,13 @@
 Raw sensor decoder for Colmi R02.
 Handles PPG, accelerometer and Sp02 raw packets.
 """
-from smart_ring_open.libraries.colmi_r02_edgeimpulse.ring import create_command
+from .packet import make_packet
 from dataclasses import dataclass
 from datetime import datetime
 
 RAW_SENSOR_CMD_TYPE = 0xA1
-ENABLE_RAW_SENSOR_CMD = create_command("a104")
-DISABLE_RAW_SENSOR_CMD = create_command("a102")
+ENABLE_RAW_SENSOR_CMD = make_packet(RAW_SENSOR_CMD_TYPE, bytearray([0x04]))
+DISABLE_RAW_SENSOR_CMD = make_packet(RAW_SENSOR_CMD_TYPE, bytearray([0x02]))
 
 @dataclass
 class SpO2RawData:

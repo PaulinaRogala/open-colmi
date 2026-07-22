@@ -165,18 +165,18 @@ async def handle_notification(sender: int, data: bytearray):
         decoded = decode_raw_sensor_packet(data)
         if decoded is None:
             return
-        timestamp=datetime.now().isoformat
-        row = [timestamp, data.hec()]
+        timestamp=datetime.now().isoformat()
+        row = [timestamp, data.hex()]
 
         if isinstance(decoded, PPGRawData):
-            row += ["", "", "", decoded.ppg, decoded.ppg_max, decoded.ppg_min, decoded.ppg_diff]
+            row += ["", "", "", decoded.ppg, decoded.ppg_max, decoded.ppg_min, decoded.ppg_diff,"","","",""]
         elif isinstance(decoded,AccelerometerRawData):
             row+=[decoded.accX,decoded.accY,decoded.accZ, '','','','','','','','']
         elif isinstance(decoded, SpO2RawData):
             row += ["", "", "", "", "", "", "", decoded.spo2, decoded.spo2_max, decoded.spo2_min, decoded.spo2_diff]
             
         csv_writer.writerow(row)
-        print("Written to CSV:", [timestamp] + [data.get(col, "") for col in data])  # Confirm write
+        print(f"Saved: {timestamp} | Payload: {data.hex()}")  # Confirm write
 
     # Print parsed data to verify the values
     # print("Received data:", parsed_data)

@@ -22,7 +22,7 @@ MAIN_NOTIFY_CHARACTERISTIC_UUID = "de5bf729-d711-4e47-af26-65e3012a5dc7"
 RXTX_SERVICE_UUID = "6e40fff0-b5a3-f393-e0a9-e50e24dcca9e"
 RXTX_WRITE_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 RXTX_NOTIFY_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
-
+all_rows=[]
 # Commands
 def create_command(hex_string):
     bytes_array = [int(hex_string[i:i+2], 16) for i in range(0, len(hex_string), 2)]
@@ -55,7 +55,7 @@ def resample_data(input_file, resample_ms, columns, output_path=None):
     frequency = f'{resample_ms}ms'
 
     # Load data and ensure timestamp is in datetime format
-    df = pd.read_csv(input_file, parse_dates=['timestamp'])
+    df = pd.read_csv(input_file, parse_dates=['timestamp'], comment='#')
     df = df.set_index('timestamp')
 
     # Select only the desired columns and resample
@@ -152,14 +152,7 @@ def upload_to_edge_impulse(fullpath, label, api_key, category="training", metada
     else:
         print(f"Failed to upload data: {res.status_code} - {res.text}")
 
-# Open CSV file for writing
-csv_file = open(filename, mode="w", newline="")
-csv_writer = csv.writer(csv_file)
-csv_writer.writerow([
-    "timestamp", "payload", "accX", "accY", "accZ",
-    "ppg", "ppg_max", "ppg_min", "ppg_diff",
-    "spO2", "spO2_max", "spO2_min", "spO2_diff"
-])
+
 
 async def handle_notification(sender: int, data: bytearray):
         decoded = decode_raw_sensor_packet(data)
@@ -174,8 +167,8 @@ async def handle_notification(sender: int, data: bytearray):
             row+=[decoded.accX,decoded.accY,decoded.accZ, '','','','','','','','']
         elif isinstance(decoded, SpO2RawData):
             row += ["", "", "", "", "", "", "", decoded.spo2, decoded.spo2_max, decoded.spo2_min, decoded.spo2_diff]
-            
-        csv_writer.writerow(row)
+
+        all_rows.append(row) 
         print(f"Saved: {timestamp} | Payload: {data.hex()}")  # Confirm write
 
     # Print parsed data to verify the values
@@ -217,6 +210,7 @@ async def select_device():
 # Main
 async def main(duration, label, columns, resample_ms, plot, ei_upload):
     """Main function with specified duration (seconds) for the reading."""
+    
     device_address = load_device_address()
     if not device_address:
         selected_device = await select_device()
@@ -232,7 +226,9 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
             return
 
         print(f"Connected to device with address {device_address}!")
-
+        
+        start_time=datetime.now()
+        
         await client.start_notify(MAIN_NOTIFY_CHARACTERISTIC_UUID, handle_notification)
         await client.start_notify(RXTX_NOTIFY_CHARACTERISTIC_UUID, handle_notification)
 
@@ -254,8 +250,31 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
                 await send_data_array(client, DISABLE_RAW_SENSOR_CMD, "RXTX")
             except Exception as e:
                 print(f"Error wiht turning sensors off: {e}")
-
-            csv_file.close()
+            
+            end_time=datetime.now()
+            duration_seconds=(end_time-start_time).total_seconds()
+            with open(filename, mode='w',newline='') as csv_file:
+                csv_file.write("# === METADATA ===\n")
+                csv_file.write(f"# device_address: {device_address}\n")
+                csv_file.write(f"# firmware: unknown\n")  
+                csv_file.write(f"# start_time: {start_time.isoformat()}\n")
+                csv_file.write(f"# end_time: {end_time.isoformat()}\n")
+                csv_file.write(f"# duration_seconds: {duration_seconds:.3f}\n")
+                #csv_file.write(f"# packet_count: {packet_counter}\n")
+                csv_file.write(f"# resample_ms: {resample_ms}\n")
+                csv_file.write(f"# sensors: {','.join(columns)}\n")
+                csv_file.write(f"# label: {label}\n")
+                csv_file.write(f"# plot_enabled: {plot}\n")
+                csv_file.write(f"# ei_upload: {ei_upload}\n")
+                csv_file.write("# ============\n\n")  
+            
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow([
+                    "timestamp", "payload", "accX", "accY", "accZ",
+                    "ppg", "ppg_max", "ppg_min", "ppg_diff",
+                    "spO2", "spO2_max", "spO2_min", "spO2_diff"
+                ])
+                csv_writer.writerows(all_rows)
             print(f"Data saved to {filename}")
 
             if resample_ms:

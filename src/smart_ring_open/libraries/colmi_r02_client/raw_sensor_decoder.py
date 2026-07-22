@@ -12,7 +12,15 @@ DISABLE_RAW_SENSOR_CMD = make_packet(RAW_SENSOR_CMD_TYPE, bytearray([0x02]))
 
 @dataclass
 class SpO2RawData:
-    """Raw SpO2 data from Colmi R02"""
+    """
+    Raw SpO2 data from Colmi R02.
+    Attributes:
+        spo2 (int): Blood oxygen saturation value (raw sensor reading, not necessarily %).
+        spo2_max (int): Maximum SpO2 value in the measurement window.
+        spo2_min (int): Minimum SpO2 value in the measurement window.
+        spo2_diff (int): Difference between max and min SpO2 (spO2_max - spO2_min).
+        timestamp (float): Unix timestamp (seconds since epoch) when the packet was received.
+    """
     spo2: int
     spo2_max: int
     spo2_min: int
@@ -21,7 +29,14 @@ class SpO2RawData:
 
 @dataclass
 class AccelerometerRawData:
-    """Raw accelerometer data from Colmi R02"""
+    """
+    Raw accelerometer data from Colmi R02.
+    Attributes:
+        accX (float): Acceleration on the X-axis in G-forces.
+        accY (float): Acceleration on the Y-axis in G-forces.
+        accZ (float): Acceleration on the Z-axis in G-forces.
+        timestamp (float): Unix timestamp (seconds since epoch) when the packet was received.
+    """
     accX: float
     accY: float
     accZ: float
@@ -29,7 +44,15 @@ class AccelerometerRawData:
 
 @dataclass
 class PPGRawData:
-    """Raw PPG data from Colmi R02"""
+    """
+    Raw PPG data from Colmi R02.
+    Attributes:
+        ppg (int): Raw PPG sensor value.
+        ppg_max (int): Maximum PPG value in the measurement window.
+        ppg_min (int): Minimum PPG value in the measurement window.
+        ppg_diff (int): Difference between max and min PPG (ppg_max - ppg_min).
+        timestamp (float): Unix timestamp (seconds since epoch) when the packet was received.
+    """
     ppg: int
     ppg_max: int
     ppg_min: int

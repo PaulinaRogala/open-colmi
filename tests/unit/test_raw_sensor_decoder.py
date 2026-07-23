@@ -25,6 +25,16 @@ def test_decode_spo2_packet():
     assert decoded.spo2_min==0x0042
     assert decoded.spo2_diff==0x003b
 
+#test for accelerometer
+def test_decode_acc_packet():
+    raw_hex="a103deb4fdc8fb3e0000000000000034"
+    payload=bytes.fromhex(raw_hex)
+
+    decoded=decode_raw_sensor_packet(payload)
+    assert isinstance(decoded, AccelerometerRawData)
+    assert decoded.accX==0x7be
+    assert decoded.accY==0x5E4
+    assert decoded.accZ==0x7D8
 
 #test for invalid packet
 def test_decode_invalid_packet():

@@ -12,3 +12,11 @@ def test_decode_ppg_packet():
     assert decoded.ppg_max == 0x2028
     assert decoded.ppg_min == 0x1F51
     assert decoded.ppg_diff == 0x00D7
+
+#test for invalid packet
+def test_decode_invalid_packet():
+    raw_hex="a105066320281f5100d700000000009b"
+    payload=bytes.fromhex(raw_hex)
+    
+    decoded=decode_raw_sensor_packet(payload)
+    assert decoded is None

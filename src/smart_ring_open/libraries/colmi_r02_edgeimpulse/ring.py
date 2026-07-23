@@ -23,6 +23,7 @@ RXTX_SERVICE_UUID = "6e40fff0-b5a3-f393-e0a9-e50e24dcca9e"
 RXTX_WRITE_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 RXTX_NOTIFY_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 all_rows=[]
+packet_counter=0
 # Commands
 def create_command(hex_string):
     bytes_array = [int(hex_string[i:i+2], 16) for i in range(0, len(hex_string), 2)]
@@ -52,6 +53,14 @@ filename = os.path.join(DATA_FOLDER, f"ring_data_{timestamp_now}.csv")
 
 def resample_data(input_file, resample_ms, columns, output_path=None):
     """Resample the data to a specified frequency in milliseconds and optionally save the result."""
+    with open(input_file, mode='r') as in_f:
+        metadata_lines=[]
+        while True:
+            line=in_f.readline()
+            if not line.startswith('#'):
+                break
+            metadata_lines.append(line)
+
     frequency = f'{resample_ms}ms'
 
     # Load data and ensure timestamp is in datetime format
@@ -67,7 +76,14 @@ def resample_data(input_file, resample_ms, columns, output_path=None):
     # Save the resampled data to a CSV file if output_path is provided
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        df_resampled.to_csv(output_path, index=False)
+        with open(output_path, mode='w') as out_f:
+            out_f.writelines(metadata_lines)
+            out_f.write(f"# resampled: {frequency}\n")
+            out_f.write(f"# interpolation method: linear\n")
+            out_f.write(f"# resampled columns: {','.join(columns)}\n")
+            out_f.write(f"# resampled_timestamp: {datetime.now().isoformat()}\n")
+            out_f.write("# ============\n\n")
+            df_resampled.to_csv(out_f, index=False, header=True)
         print(f"Resampled data saved to {output_path}")
 
     return df_resampled
@@ -155,6 +171,7 @@ def upload_to_edge_impulse(fullpath, label, api_key, category="training", metada
 
 
 async def handle_notification(sender: int, data: bytearray):
+        global packet_counter
         decoded = decode_raw_sensor_packet(data)
         if decoded is None:
             return
@@ -168,7 +185,8 @@ async def handle_notification(sender: int, data: bytearray):
         elif isinstance(decoded, SpO2RawData):
             row += ["", "", "", "", "", "", "", decoded.spo2, decoded.spo2_max, decoded.spo2_min, decoded.spo2_diff]
 
-        all_rows.append(row) 
+        all_rows.append(row)
+        packet_counter+=1 
         print(f"Saved: {timestamp} | Payload: {data.hex()}")  # Confirm write
 
     # Print parsed data to verify the values
@@ -251,7 +269,7 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
             except Exception as e:
                 print(f"Error wiht turning sensors off: {e}")
             
-            end_time=datetime.now()
+            end_time=datetime.now() 
             duration_seconds=(end_time-start_time).total_seconds()
             with open(filename, mode='w',newline='') as csv_file:
                 csv_file.write("# === METADATA ===\n")
@@ -260,12 +278,11 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
                 csv_file.write(f"# start_time: {start_time.isoformat()}\n")
                 csv_file.write(f"# end_time: {end_time.isoformat()}\n")
                 csv_file.write(f"# duration_seconds: {duration_seconds:.3f}\n")
-                #csv_file.write(f"# packet_count: {packet_counter}\n")
-                csv_file.write(f"# resample_ms: {resample_ms}\n")
-                csv_file.write(f"# sensors: {','.join(columns)}\n")
+                csv_file.write(f"# packet_count: {packet_counter}\n")
+                csv_file.write(f"# sensors: acc, ppg, spo2\n")
                 csv_file.write(f"# label: {label}\n")
                 csv_file.write(f"# plot_enabled: {plot}\n")
-                csv_file.write(f"# ei_upload: {ei_upload}\n")
+                #csv_file.write(f"# ei_upload: {ei_upload}\n")
                 csv_file.write("# ============\n\n")  
             
                 csv_writer = csv.writer(csv_file)

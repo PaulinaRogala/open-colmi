@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Literal
 
-def calculate_stability_metrics(intervals: pd.Series)->dict:
+def calculate_stability_metrics(intervals: pd.Series):
      """
      The sampling rate stability analysis now includes:
     - np.std ; measures how much the time intervals between consecutive samples differ from the average interval. 
@@ -20,15 +20,7 @@ def calculate_stability_metrics(intervals: pd.Series)->dict:
      median_interval=np.median(intervals)
      q1, q3= np.percentile(intervals,[25,75])
      iqr=q3-q1
-     return {
-        'sampling_rate_hz': sampling_rate,
-        'avg_interval_s': avg_interval,
-        'std_interval_s': std_interval,
-        'cv_percent': cv_percent,
-        'min_interval_s': min_interval,
-        'max_interval_s': max_interval,
-        'median_interval_s': median_interval,
-        'iqr_interval_s': iqr}
+     return print (f'sampling_rate:  {sampling_rate:.2f} Hz,\navg_interval: {avg_interval:.4f} s,\nmedian_interval: {median_interval:.4f} s,\nstd_interval: {std_interval:.4f} s,\ncv_percent: {cv_percent:.2f} %,\nmin_interval: {min_interval:.4f} s,\nmax_interval: {max_interval:.4f} s,\niqr_interval: {iqr:.4f} s')
 
 def get_sensor_type_from_payload(payload_hex: str)->str|None:
     """
@@ -53,7 +45,7 @@ def get_sensor_type_from_payload(payload_hex: str)->str|None:
     return None
     
 
-def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc','spo2','all'] ,window_size: int)->float|dict[str,float]:
+def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc','spo2','all'] ,window_size: int, details: bool|None=True)->float|dict[str,float]:
     """
     Calculate the average sampling rate of the choosen sensor data from CSV file.
     Args: 
@@ -75,15 +67,15 @@ def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc'
             sensor_df = df[df['sensor_type']==sensor]
             intervals=sensor_df['timestamp'].diff().dt.total_seconds().dropna()
             avg_interval=np.mean(intervals)
-            print(f"average interval for {sensor}: {f"{avg_interval:.4f}"} s")
-    
+            if details is True:
+                 print(f"metrics for {sensor}")
+                 calculate_stability_metrics(intervals)
+                 print("####")
             if avg_interval>0:
                 sampling_rate=1/avg_interval 
                 results[sensor]=sampling_rate
             else:
                 sampling_rate=0
-
-            print(f"Sampling rate for {sensor}: {f"{sampling_rate:.2f}"} Hz")
         return results
                     
 
@@ -94,14 +86,15 @@ def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc'
         
         intervals=sensor_df['timestamp'].diff().dt.total_seconds().dropna()
         avg_interval=np.mean(intervals)
-        print(f"average interval for {sensor_type}: {f"{avg_interval:.4f}"} s")
+        if details is True:
+            print(f"metrics for {sensor_type}")
+            calculate_stability_metrics(intervals)
+            print("####")
 
         if avg_interval>0:
             sampling_rate=1/avg_interval 
         else:
             sampling_rate=0
-
-        print(f"Sampling rate: {f"{sampling_rate:.2f}"} Hz")
         return sampling_rate
          
 

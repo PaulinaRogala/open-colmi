@@ -3,6 +3,17 @@ import numpy as np
 from typing import Literal
 
 def get_sensor_type_from_payload(payload_hex: str)->str|None:
+    """
+    Determine the sensor type based on the payload header.
+    The sensor type is identified from the first two bytes of the hex payload:
+    - a101 -> spo2
+    - a102 -> ppg
+    - a103 -> acc
+    Args:
+        payload_hex: Hexadecimal payload string (e.g. "a103de72fde6fb460000000000000018").
+    Returns:
+        Sensor type ('spo2', 'ppg', 'acc') if recognized, otherwise None.
+    """
     payload_hex=payload_hex.lower()
 
     if payload_hex.startswith('a101'):

@@ -1,6 +1,17 @@
 import pandas as pd
 import numpy as np
 
+def get_sensor_type_from_payload(payload_hex: str)->str|None:
+    payload_hex=payload_hex.lower()
+
+    if payload_hex.startswith('a101'):
+            return 'spo2'
+    if payload_hex.startswith('a102'):
+            return 'ppg'
+    if payload_hex.startswith('a103'):
+            return 'acc'
+    
+
 def calculate_sampling_rate(csv_file_path: str, window_size: int)->float:
     """
     Calculate the average sampling rate of the PPG data from CSV file.

@@ -10,6 +10,10 @@ def calculate_stability_metrics(intervals: pd.Series):
     - np.min, np.max ; show the shortest and longest time intervals between consecutive samples. 
     - np.median ; represents the middle value of all sampling intervals. 
     - iqr ; measures the spread of the middle 50% of sampling intervals.
+    Args:
+        intervals: Pandas Series containing time intervals between consecutive samples in seconds
+    Returns:
+        Prints calculated sampling rates stability metrics
      """
      avg_interval=np.mean(intervals)
      sampling_rate=1/avg_interval if avg_interval>0 else 0
@@ -52,6 +56,7 @@ def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc'
     csv_file_path: Path to CSV file with 'timestamp' and for eg. 'ppg' column.
     sensor_type: type of sensor; 'acc'-accelerometer, 'ppg'-PPG, 'spo2'-SpO2, 'all'-all sensors
     window_size: Number of samples used for calculation
+    details: if True or None displays sampling stability metrics
     Return:
     Average sampling rate in Hz for choosen sensor
     

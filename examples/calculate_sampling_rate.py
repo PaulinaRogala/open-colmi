@@ -2,6 +2,34 @@ import pandas as pd
 import numpy as np
 from typing import Literal
 
+def calculate_stability_metrics(intervals: pd.Series)->dict:
+     """
+     The sampling rate stability analysis now includes:
+    - np.std ; measures how much the time intervals between consecutive samples differ from the average interval. 
+    - cv_percent ; describes the relative variability of sampling intervals compared to the average interval. 
+    - np.min, np.max ; show the shortest and longest time intervals between consecutive samples. 
+    - np.median ; represents the middle value of all sampling intervals. 
+    - iqr ; measures the spread of the middle 50% of sampling intervals.
+     """
+     avg_interval=np.mean(intervals)
+     sampling_rate=1/avg_interval if avg_interval>0 else 0
+     std_interval=np.std(intervals)
+     cv_percent=(std_interval/avg_interval)*100 if avg_interval>0 else 0
+     min_interval=np.min(intervals)
+     max_interval=np.max(intervals)
+     median_interval=np.median(intervals)
+     q1, q3= np.percentile(intervals,[25,75])
+     iqr=q3-q1
+     return {
+        'sampling_rate_hz': sampling_rate,
+        'avg_interval_s': avg_interval,
+        'std_interval_s': std_interval,
+        'cv_percent': cv_percent,
+        'min_interval_s': min_interval,
+        'max_interval_s': max_interval,
+        'median_interval_s': median_interval,
+        'iqr_interval_s': iqr}
+
 def get_sensor_type_from_payload(payload_hex: str)->str|None:
     """
     Determine the sensor type based on the payload header.

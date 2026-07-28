@@ -7,6 +7,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any
 import time
+import statistics
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
@@ -141,6 +142,13 @@ class Client:
             prev_time=self._received_sequence[sequences[i-1]]
             delays.append(curr_time-prev_time)
         return delays
+
+    def get_jitter(self)->float:
+        """Calculate the jitter of received packets.
+        Returns:
+            standard deviation of packet arrival intervals in second."""     
+        delays=self.get_delays()
+        return statistics.stdev(delays)
     
     async def send_packet(self, packet: bytearray) -> None:
         logger.debug(f"Sending packet: {packet}")

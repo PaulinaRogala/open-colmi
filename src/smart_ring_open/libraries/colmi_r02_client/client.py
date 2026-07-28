@@ -131,6 +131,9 @@ class Client:
                 f.write(b"\n")
 
     def get_delays(self)->list[float]:
+        """Return time intervals between consecutive received packets.
+    Returns:
+        A list of delays in seconds between each pair of consecutive packets."""
         sequences = sorted(self._received_sequence.keys())
         delays=[]
         for i in range(1, len(sequences)):

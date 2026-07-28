@@ -28,6 +28,10 @@ async def get_data():
                     print(f"Real time reading HR{i}: {hr} bpm")
                     i+=1
                 print("\n")
+                print(f"Jitter: {client.get_jitter() * 1000:.2f} ms")
+                print(f"Delays: {client.get_delays()} s")
+                print(f"Continuity (expected 60 packets) [%]: {client.get_transmission_continuity(60) * 100:.1f}%")
+                
             else:
                 print("Put the ring on to messure HR in real-time!")
             # real_time_reading_pressure=await client.get_realtime_reading(real_time.RealTimeReading.BLOOD_PRESSURE)

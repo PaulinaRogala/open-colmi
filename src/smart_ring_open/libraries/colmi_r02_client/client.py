@@ -6,12 +6,14 @@ import logging
 from pathlib import Path
 from types import TracebackType
 from typing import Any
+import time
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
 
 from . import battery
 from . import blink_twice, date_utils, hr, hr_settings, packet, real_time, reboot, set_time, steps
+from . import raw_sensor_decoder
 
 UART_SERVICE_UUID = "6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -49,7 +51,8 @@ COMMAND_HANDLERS: dict[int, Callable[[bytearray], Any]] = {
     hr.CMD_READ_HEART_RATE: hr.HeartRateLogParser().parse,
     set_time.CMD_SET_TIME: empty_parse,
     hr_settings.CMD_HEART_RATE_LOG_SETTINGS: hr_settings.parse_heart_rate_log_settings,
-    blink_twice.CMD_BLINK_TWICE: empty_parse
+    blink_twice.CMD_BLINK_TWICE: empty_parse,
+    raw_sensor_decoder.RAW_SENSOR_CMD_TYPE: raw_sensor_decoder.decode_raw_sensor_packet
 }
 """
 TODO put these somewhere nice
@@ -68,6 +71,8 @@ class Client:
         self.bleak_client = BleakClient(self.address)
         self.queues: dict[int, asyncio.Queue] = {cmd: asyncio.Queue() for cmd in COMMAND_HANDLERS}
         self.record_to = record_to
+        self._packet_counter = 0
+        self._received_sequence = {}
 
     async def __aenter__(self) -> "Client":
         logger.info(f"Connecting to {self.address}")
@@ -102,7 +107,9 @@ class Client:
 
     def _handle_tx(self, _: BleakGATTCharacteristic, packet: bytearray) -> None:
         """Bleak callback that handles new packets from the ring."""
-
+        self._packet_counter+=1
+        self._received_sequence[self._packet_counter]=time.time()
+        
         logger.info(f"Received packet {packet}")
 
         assert len(packet) == 16, f"Packet is the wrong length {packet}"

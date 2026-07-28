@@ -109,7 +109,7 @@ class Client:
         """Bleak callback that handles new packets from the ring."""
         self._packet_counter+=1
         self._received_sequence[self._packet_counter]=time.time()
-        
+
         logger.info(f"Received packet {packet}")
 
         assert len(packet) == 16, f"Packet is the wrong length {packet}"
@@ -130,6 +130,15 @@ class Client:
                 f.write(packet)
                 f.write(b"\n")
 
+    def get_delays(self)->list[float]:
+        sequences = sorted(self._received_sequence.keys())
+        delays=[]
+        for i in range(1, len(sequences)):
+            curr_time=self._received_sequence[sequences[i]]
+            prev_time=self._received_sequence[sequences[i-1]]
+            delays.append(curr_time-prev_time)
+        return delays
+    
     async def send_packet(self, packet: bytearray) -> None:
         logger.debug(f"Sending packet: {packet}")
         await self.bleak_client.write_gatt_char(self.rx_char, packet, response=False)

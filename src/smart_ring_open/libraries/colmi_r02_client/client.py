@@ -6,12 +6,15 @@ import logging
 from pathlib import Path
 from types import TracebackType
 from typing import Any
+import time
+import statistics
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
 
 from . import battery
 from . import blink_twice, date_utils, hr, hr_settings, packet, real_time, reboot, set_time, steps
+from . import raw_sensor_decoder
 
 UART_SERVICE_UUID = "6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -49,7 +52,8 @@ COMMAND_HANDLERS: dict[int, Callable[[bytearray], Any]] = {
     hr.CMD_READ_HEART_RATE: hr.HeartRateLogParser().parse,
     set_time.CMD_SET_TIME: empty_parse,
     hr_settings.CMD_HEART_RATE_LOG_SETTINGS: hr_settings.parse_heart_rate_log_settings,
-    blink_twice.CMD_BLINK_TWICE: empty_parse
+    blink_twice.CMD_BLINK_TWICE: empty_parse,
+    raw_sensor_decoder.RAW_SENSOR_CMD_TYPE: raw_sensor_decoder.decode_raw_sensor_packet
 }
 """
 TODO put these somewhere nice
@@ -68,6 +72,8 @@ class Client:
         self.bleak_client = BleakClient(self.address)
         self.queues: dict[int, asyncio.Queue] = {cmd: asyncio.Queue() for cmd in COMMAND_HANDLERS}
         self.record_to = record_to
+        self._packet_counter = 0
+        self._received_sequence = {}
 
     async def __aenter__(self) -> "Client":
         logger.info(f"Connecting to {self.address}")
@@ -102,6 +108,8 @@ class Client:
 
     def _handle_tx(self, _: BleakGATTCharacteristic, packet: bytearray) -> None:
         """Bleak callback that handles new packets from the ring."""
+        self._packet_counter+=1
+        self._received_sequence[self._packet_counter]=time.time()
 
         logger.info(f"Received packet {packet}")
 
@@ -123,6 +131,39 @@ class Client:
                 f.write(packet)
                 f.write(b"\n")
 
+    def get_delays(self)->list[float]:
+        """Return time intervals between consecutive received packets.
+    Returns:
+        A list of delays in seconds between each pair of consecutive packets."""
+        sequences = sorted(self._received_sequence.keys())
+        delays=[]
+        for i in range(1, len(sequences)):
+            curr_time=self._received_sequence[sequences[i]]
+            prev_time=self._received_sequence[sequences[i-1]]
+            delays.append(curr_time-prev_time)
+        return delays
+
+    def get_jitter(self)->float:
+        """Calculate the jitter of received packets.
+        Returns:
+            standard deviation of packet arrival intervals in second."""     
+        delays=self.get_delays()
+        return statistics.stdev(delays)
+
+    def get_transmission_continuity(self, expected_packets: int)->float:
+        """Calculate transmission continuity as the ratio of received packets 
+        to the expected number of packets.
+    Args:
+        expected_packets:
+            The expected number of packets during the transmission period.
+    Returns:
+        A value between 0.0 and 1.0 representing transmission continuity.
+        Returns 1.0 if no packets were expected."""
+        
+        if expected_packets==0:
+            return 1
+        return len(self._received_sequence)/expected_packets
+    
     async def send_packet(self, packet: bytearray) -> None:
         logger.debug(f"Sending packet: {packet}")
         await self.bleak_client.write_gatt_char(self.rx_char, packet, response=False)

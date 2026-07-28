@@ -149,6 +149,20 @@ class Client:
             standard deviation of packet arrival intervals in second."""     
         delays=self.get_delays()
         return statistics.stdev(delays)
+
+    def get_transmission_continuity(self, expected_packets: int)->float:
+        """Calculate transmission continuity as the ratio of received packets 
+        to the expected number of packets.
+    Args:
+        expected_packets:
+            The expected number of packets during the transmission period.
+    Returns:
+        A value between 0.0 and 1.0 representing transmission continuity.
+        Returns 1.0 if no packets were expected."""
+        
+        if expected_packets==0:
+            return 1
+        return len(self._received_sequence)/expected_packets
     
     async def send_packet(self, packet: bytearray) -> None:
         logger.debug(f"Sending packet: {packet}")

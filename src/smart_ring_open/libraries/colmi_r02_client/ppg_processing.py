@@ -45,7 +45,7 @@ class PPGProcessor:
 
         return filtered
 
-    def detect_peaks(self, filtered_signal: np.ndarray, height: Optional[float]|None, distance: Optional[float]|None)->PPGPeaks:
+    def detect_peaks(self, filtered_signal: np.ndarray, height: Optional[float]=None, distance: Optional[float]=None)->PPGPeaks:
         """
         Detect PPG peaks using scipy's find_peaks
         Args:
@@ -81,7 +81,7 @@ class PPGProcessor:
             heart_rate=float(hr),
             peak_indices=list(peaks))
     
-    def process(self, ppg_signal: np.ndarray, timestamps: Optional[list]|None)->FilteredPPG:
+    def process(self, ppg_signal: np.ndarray, timestamps: Optional[list]=None)->FilteredPPG:
         """
         Complete PPG processing pipeline.
         Args:

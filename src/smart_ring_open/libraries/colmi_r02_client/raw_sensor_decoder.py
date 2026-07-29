@@ -5,6 +5,8 @@ Handles PPG, accelerometer and Sp02 raw packets.
 from .packet import make_packet
 from dataclasses import dataclass
 from datetime import datetime
+import numpy as np
+from typing import Tuple
 
 RAW_SENSOR_CMD_TYPE = 0xA1
 ENABLE_RAW_SENSOR_CMD = make_packet(RAW_SENSOR_CMD_TYPE, bytearray([0x04]))
@@ -110,6 +112,18 @@ def decode_raw_sensor_packet(data: bytearray)->SpO2RawData|PPGRawData|Accelerome
             timestamp=timestamp
         )
     return None
+
+def ppg_to_numpy(ppg_data_list: list[PPGRawData])->Tuple[np.ndarray, np.ndarray]:
+    """
+    Convert list of PPGRawData to numpy arrays for processing.
+    Args:
+        ppg_data_list: List of PPGRawData objects
+    Returns:
+        Tuple of (ppg_values, timestamps) as numpy arrays
+    """
+    ppg_values=np.array([d.ppg for d in ppg_data_list])
+    timestamps=np.array([d.timestamps for d in ppg_data_list])
+    return ppg_values,timestamps
         
 
     

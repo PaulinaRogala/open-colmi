@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Literal
+from typing import Literal, Optional
 
 def calculate_stability_metrics(intervals: pd.Series):
      """
@@ -49,7 +49,7 @@ def get_sensor_type_from_payload(payload_hex: str)->str|None:
     return None
     
 
-def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc','spo2','all'] ,window_size: int, details: bool|None=True)->float|dict[str,float]:
+def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc','spo2','all'] ,window_size: Optional[int]=None, details: bool|None=True)->float|dict[str,float]:
     """
     Calculate the average sampling rate of the choosen sensor data from CSV file.
     Args: 
@@ -62,7 +62,8 @@ def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc'
     
     """
     df=pd.read_csv(csv_file_path, parse_dates=['timestamp'], comment='#')
-    df=df.iloc[:window_size]
+    if window_size is not None:
+        df=df.iloc[:window_size]
     df['sensor_type']=df['payload'].apply(get_sensor_type_from_payload)
 
     known_sensors=['ppg','acc','spo2']
@@ -104,8 +105,8 @@ def calculate_sampling_rate(csv_file_path: str, sensor_type: Literal['ppg','acc'
          
 
 if __name__=="__main__":
-    file_path="raw_data/ring_data_20260727_094818.csv"
-    calculate_sampling_rate(file_path,"all",100)
+    file_path="examples/raw_data/ring_data_20260727_094818.csv"
+    calculate_sampling_rate(file_path,"ppg",100)
 
    
 

@@ -10,6 +10,15 @@ class PPGPeaks:
     heart_rate: float #BPM
     peak_indices: list[int] #indices in the signal
 
+@dataclass
+class FilteredPPG:
+    """Filtered PPG signal with processing metadata"""
+    raw_signal: np.ndarray
+    filtered_signal: np.ndarray
+    sampling_rate:float
+    peaks: PPGPeaks|None
+    timestamp:list|None
+
 class PPGProcessor:
     def __init__(self, sampling_rate: float):
         self.sampling_rate = sampling_rate
@@ -70,4 +79,24 @@ class PPGProcessor:
             peak_times=list(peak_times),
             heart_rate=float(hr),
             peak_indices=list(peaks))
+    
+    def process(self, ppg_signal: np.ndarray, timestamps: list|None)->FilteredPPG:
+        """
+        Complete PPG processing pipeline.
+        Args:
+            ppg_signal: Raw PPG signal
+            timestamps: Optional list of timestamps for each sample
+        Returns:
+            FilteredPPG with all processing results
+        """
+        filtered=self.bandpass_filter(ppg_signal)
+        peaks=self.detect_peaks(filtered)
+        return FilteredPPG(
+            raw_signal=ppg_signal, 
+            filtered_signal=filtered,
+            sampling_rate=self.sampling_rate,
+            peaks=peaks, 
+            timestamp=timestamps)
+
+    
 

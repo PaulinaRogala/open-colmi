@@ -35,7 +35,17 @@ class PPGProcessor:
 
         return filtered
 
-    def detect_peaks(self, filtered_signal: np.ndarray, height: float|None, distance: float|None):
+    def detect_peaks(self, filtered_signal: np.ndarray, height: float|None, distance: float|None)->PPGPeaks:
+        """
+        Detect PPG peaks using scipy's find_peaks
+        Args:
+            filtered_signal: Filtered PPG signal
+            height: Minimum peak height (None=auto)
+            distance: Minimum distance between peaks in samples (None=auto)
+        Returns:
+            PPGPeaks with detected peak information
+        
+        """
         if distance is None:
             #based on max HR ~220 BPM = ~3.67 Hz
             min_distance=int(self.sampling_rate/3.67)

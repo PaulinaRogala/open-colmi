@@ -102,6 +102,23 @@ class PPGProcessor:
             sampling_rate=self.sampling_rate,
             peaks=peaks, 
             timestamp=timestamps)
+
+    def calculate_snr(self, raw_signal: np.ndarray, filtered_signal: np.ndarray)->float:
+                """
+                Calculate SNR in dB
+                Args:
+                    raw_signal: Raw PPG signal
+                    filtered_signal: Filtered PPG signal
+                Returns:
+                    Signal to noise ratio as float
+    
+                """
+                noise = raw_signal - filtered_signal
+                signal_power= np.mean(filtered_signal**2)
+                noise_power=np.mean(noise**2)
+                if noise_power==0 or signal_power==0:
+                    return 0
+                return 10*np.log10(signal_power/noise_power)
     
     def visualize(self, filtered_ppg: FilteredPPG, save_path: Optional[str]=None):
         """
@@ -110,6 +127,10 @@ class PPGProcessor:
             filtered_ppg: FilteredPPG object from process()
             save_path: Optional file path to save the figure
         """
+        print("Calculating SNR...")
+        snr=self.calculate_snr(filtered_ppg.raw_signal, filtered_ppg.filtered_signal)
+        print(f"SNR: {snr}")
+
         plt.figure()
         time_axis=np.arange(len(filtered_ppg.raw_signal))/self.sampling_rate
         plt.plot(time_axis, filtered_ppg.raw_signal, alpha=0.3, label="Raw PPG signal")
@@ -133,23 +154,9 @@ class PPGProcessor:
             plt.savefig(save_path)
             print(f"Figure is saved: {save_path}")
         plt.show()
+        
 
-        def calculate_snr(self, raw_signal: np.ndarray, filtered_signal: np.ndarray)->float:
-            """
-            Calculate SNR in dB
-            Args:
-                raw_signal: Raw PPG signal
-                filtered_signal: Filtered PPG signal
-            Returns:
-                Signal to noise ratio as float
-
-            """
-            noise = raw_signal - filtered_signal
-            signal_power= np.mean(filtered_signal**2)
-            noise_power=np.mean(noise**2)
-            if noise_power==0 or signal_power==0:
-                return 0
-            return 10*np.log10(signal_power/noise_power)
+        
 
     
 

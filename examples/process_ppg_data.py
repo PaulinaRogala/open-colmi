@@ -1,4 +1,5 @@
 import asyncio
+import numpy as np
 import traceback
 import pandas as pd
 from smart_ring_open.libraries.colmi_r02_client.ppg_processing import PPGProcessor
@@ -34,6 +35,7 @@ async def process_real_time():
 
     processor=PPGProcessor(sampling_rate=25)
     ppg_list=[]
+    window_size=50
 
     async with Client(ring_address) as client:
         print("Starting...")
@@ -42,14 +44,22 @@ async def process_real_time():
 
         try:
             while True:
-                data=await client.queues[RAW_SENSOR_CMD_TYPE].get()                
+                data=await client.queues[RAW_SENSOR_CMD_TYPE].get()             
                 if isinstance(data,PPGRawData):
                     ppg_list.append(data)
-                    ppg_values, raw_timestamps = ppg_to_numpy(ppg_list)
-                    timestamps=raw_timestamps-raw_timestamps[0]
-                    filtered_ppg=processor.process(ppg_values,list(timestamps))
-                    if filtered_ppg.peaks:
-                        print(f"HR: {filtered_ppg.peaks.heart_rate:.1f} BPM")
+                    print(f"ppg_list: {len(ppg_list)}/{window_size}")
+
+                    if len(ppg_list)>=window_size:
+                        ppg_values, raw_timestamps = ppg_to_numpy(ppg_list[-window_size:])
+                        print(f"Processing {len(ppg_values)} samples...")
+                        timestamps=raw_timestamps-raw_timestamps[0]
+                        filtered_ppg=processor.process(ppg_values,list(timestamps))
+                    
+                        if filtered_ppg.peaks:
+                            print(f"HR: {filtered_ppg.peaks.heart_rate:.1f} BPM")
+                        else:
+                            print("No peaks detected!")
+                        ppg_list = ppg_list[-window_size//2:]
         except KeyboardInterrupt:
             await client.send_packet(DISABLE_RAW_SENSOR_CMD)
             print("Raw PPG sensor disabled !")

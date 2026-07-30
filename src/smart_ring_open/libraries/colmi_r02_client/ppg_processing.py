@@ -37,6 +37,9 @@ class PPGProcessor:
         Returns:
             Filtered PPG signal
         """
+        if len(ppg_signal)<50:
+            return ppg_signal
+        
         nyquist=0.5*self.sampling_rate
         low=lowcut/nyquist
         high=highcut/nyquist
@@ -130,6 +133,23 @@ class PPGProcessor:
             plt.savefig(save_path)
             print(f"Figure is saved: {save_path}")
         plt.show()
+
+        def calculate_snr(self, raw_signal: np.ndarray, filtered_signal: np.ndarray)->float:
+            """
+            Calculate SNR in dB
+            Args:
+                raw_signal: Raw PPG signal
+                filtered_signal: Filtered PPG signal
+            Returns:
+                Signal to noise ratio as float
+
+            """
+            noise = raw_signal - filtered_signal
+            signal_power= np.mean(filtered_signal**2)
+            noise_power=np.mean(noise**2)
+            if noise_power==0 or signal_power==0:
+                return 0
+            return 10*np.log10(signal_power/noise_power)
 
     
 

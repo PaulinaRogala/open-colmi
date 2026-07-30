@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy import signal
 from dataclasses import dataclass
+import matplotlib.pyplot as plt
 from typing import Optional
 
 @dataclass
@@ -98,6 +99,37 @@ class PPGProcessor:
             sampling_rate=self.sampling_rate,
             peaks=peaks, 
             timestamp=timestamps)
+    
+    def visualize(self, filtered_ppg: FilteredPPG, save_path: Optional[str]=None):
+        """
+        Visualize PPG processing results
+        Args:
+            filtered_ppg: FilteredPPG object from process()
+            save_path: Optional file path to save the figure
+        """
+        plt.figure()
+        time_axis=np.arange(len(filtered_ppg.raw_signal))/self.sampling_rate
+        plt.plot(time_axis, filtered_ppg.raw_signal, alpha=0.3, label="Raw PPG signal")
+        plt.plot(time_axis, filtered_ppg.filtered_signal, label="Filtered PPG signal")
+
+        if filtered_ppg.peaks:
+            peak_values=np.array(filtered_ppg.peaks.peaks)
+            peak_times=np.array(filtered_ppg.peaks.peak_times)
+            plt.scatter(peak_times,peak_values,color='red',label='Peaks')
+
+            hr_text=f'HR: {filtered_ppg.peaks.heart_rate:.1f} BPM'
+            plt.annotate(hr_text,xy=(0,1000))
+
+        plt.xlabel("Time[s]")
+        plt.ylabel("Amplitude")
+        plt.title("PPG Signal Processing")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path)
+            print(f"Figure is saved: {save_path}")
+        plt.show()
 
     
 

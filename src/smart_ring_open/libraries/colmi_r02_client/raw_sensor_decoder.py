@@ -122,7 +122,7 @@ def ppg_to_numpy(ppg_data_list: list[PPGRawData])->Tuple[np.ndarray, np.ndarray]
         Tuple of (ppg_values, timestamps) as numpy arrays
     """
     ppg_values=np.array([d.ppg for d in ppg_data_list])
-    timestamps=np.array([d.timestamps for d in ppg_data_list])
+    timestamps=np.array([d.timestamp for d in ppg_data_list])
     return ppg_values,timestamps
         
 

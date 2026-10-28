@@ -115,7 +115,7 @@ class Client:
 
         assert len(packet) == 16, f"Packet is the wrong length {packet}"
         packet_type = packet[0]
-        assert packet_type < 127, f"Packet has error bit set {packet}"
+        #assert packet_type < 127, f"Packet has error bit set {packet}"
 
         if packet_type in COMMAND_HANDLERS:
             result = COMMAND_HANDLERS[packet_type](packet)

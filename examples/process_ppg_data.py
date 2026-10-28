@@ -35,7 +35,7 @@ async def process_real_time():
 
     processor=PPGProcessor(sampling_rate=25)
     ppg_list=[]
-    window_size=50
+    window_size=100
 
     async with Client(ring_address) as client:
         print("Starting...")
@@ -68,8 +68,8 @@ async def process_real_time():
     
 if __name__=="__main__":
     try:
-        #process_from_csv("raw_data/ring_data_20260729_130215.csv")
-        asyncio.run(process_real_time())
+        process_from_csv("resampled/test.ring_data_20261028_165313.csv")
+        #asyncio.run(process_real_time())
     except Exception as e:
         print(f"Error: {e}")
         traceback.print_exc() 

@@ -20,10 +20,13 @@ src/smart_ring_open/libraries/colmi_r02_client/db.py
 src/smart_ring_open/libraries/colmi_r02_client/hr.py
 src/smart_ring_open/libraries/colmi_r02_client/hr_settings.py
 src/smart_ring_open/libraries/colmi_r02_client/packet.py
+src/smart_ring_open/libraries/colmi_r02_client/ppg_processing.py
 src/smart_ring_open/libraries/colmi_r02_client/pretty_print.py
+src/smart_ring_open/libraries/colmi_r02_client/raw_sensor_decoder.py
 src/smart_ring_open/libraries/colmi_r02_client/real_time.py
 src/smart_ring_open/libraries/colmi_r02_client/reboot.py
 src/smart_ring_open/libraries/colmi_r02_client/set_time.py
 src/smart_ring_open/libraries/colmi_r02_client/steps.py
-src/smart_ring_open/libraries/colmi_r02_edgeimpulse/example-data-collection-colmi-r02/ring.py
+src/smart_ring_open/libraries/colmi_r02_edgeimpulse/__init__.py
+src/smart_ring_open/libraries/colmi_r02_edgeimpulse/ring.py
 src/smart_ring_open/utils/__init__.py

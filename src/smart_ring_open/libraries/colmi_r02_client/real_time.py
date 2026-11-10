@@ -55,6 +55,8 @@ CMD_START_REAL_TIME = 105
 CMD_STOP_REAL_TIME = 106
 
 CMD_REAL_TIME_HEART_RATE = 30
+# UNVERIFIED (inherited from colmi_r02_client): b"3" is the byte 0x33 (ASCII '3'), not 3.
+# Nothing here uses this packet; stream_real_time() uses get_continue_packet() instead.
 CONTINUE_HEART_RATE_PACKET = make_packet(CMD_REAL_TIME_HEART_RATE, bytearray(b"3"))
 
 

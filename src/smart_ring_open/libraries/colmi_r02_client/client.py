@@ -75,6 +75,7 @@ class Client:
         self.record_to = record_to
         self._packet_counter = 0
         self._received_sequence = {}
+        self._received_types: dict[int, int] = {}
         self.invalid_packets = 0
         """Packets dropped because of a wrong length or checksum."""
         self.error_packets = 0
@@ -115,6 +116,7 @@ class Client:
         """Bleak callback that handles new packets from the ring."""
         self._packet_counter+=1
         self._received_sequence[self._packet_counter]=time.time()
+        self._received_types[self._packet_counter] = packet[0] if len(packet) else -1
 
         logger.info(f"Received packet {packet}")
 
@@ -149,11 +151,15 @@ class Client:
         else:
             logger.warning(f"Did not expect this packet: {packet}")
 
-    def get_delays(self)->list[float]:
+    def get_delays(self, command: int | None = None)->list[float]:
         """Return time intervals between consecutive received packets.
+    Args:
+        command: only packets of this command (e.g. real_time.CMD_START_REAL_TIME); None = all.
+            Mixing packet types (battery, HR, raw data) mixes their intervals.
     Returns:
         A list of delays in seconds between each pair of consecutive packets."""
-        sequences = sorted(self._received_sequence.keys())
+        sequences = sorted(k for k in self._received_sequence
+                           if command is None or self._received_types.get(k) == command)
         delays=[]
         for i in range(1, len(sequences)):
             curr_time=self._received_sequence[sequences[i]]
@@ -161,26 +167,34 @@ class Client:
             delays.append(curr_time-prev_time)
         return delays
 
-    def get_jitter(self)->float:
+    def get_jitter(self, command: int | None = None)->float:
         """Calculate the jitter of received packets.
+        Args:
+            command: only packets of this command; None = all.
         Returns:
-            standard deviation of packet arrival intervals in second."""     
-        delays=self.get_delays()
+            standard deviation of packet arrival intervals in second;
+            nan with fewer than 3 packets (fewer than 2 intervals)."""     
+        delays=self.get_delays(command)
+        if len(delays) < 2:
+            return float("nan")
         return statistics.stdev(delays)
 
-    def get_transmission_continuity(self, expected_packets: int)->float:
+    def get_transmission_continuity(self, expected_packets: int, command: int | None = None)->float:
         """Calculate transmission continuity as the ratio of received packets 
         to the expected number of packets.
     Args:
         expected_packets:
             The expected number of packets during the transmission period.
+        command: count only packets of this command; None = all.
     Returns:
         A value between 0.0 and 1.0 representing transmission continuity.
         Returns 1.0 if no packets were expected."""
         
         if expected_packets==0:
             return 1
-        return len(self._received_sequence)/expected_packets
+        received = sum(1 for k in self._received_sequence
+                       if command is None or self._received_types.get(k) == command)
+        return received/expected_packets
     
     async def send_packet(self, packet: bytearray) -> None:
         logger.debug(f"Sending packet: {packet}")

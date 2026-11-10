@@ -32,9 +32,16 @@ def test_decode_acc_packet():
 
     decoded=decode_raw_sensor_packet(payload)
     assert isinstance(decoded, AccelerometerRawData)
-    assert decoded.accX==0x7be
-    assert decoded.accY==0x5E4
-    assert decoded.accZ==0x7D8
+    # 12-bit two's complement: 0xFBE, 0xDE4, 0xFD8 are negative
+    assert decoded.accX==-66
+    assert decoded.accY==-540
+    assert decoded.accZ==-40
+
+#full signed range: sign bit is bit 7 of the high byte
+def test_decode_acc_sign_and_range():
+    for hi, lo, expected in [(0x00, 0x01, 1), (0x7F, 0x0F, 2047), (0x80, 0x00, -2048), (0xFF, 0x0F, -1)]:
+        payload = bytes([0xA1, 0x03, hi, lo, 0, 0, 0, 0]) + bytes(8)
+        assert decode_raw_sensor_packet(payload).accY == expected
 
 #test for invalid packet
 def test_decode_invalid_packet():

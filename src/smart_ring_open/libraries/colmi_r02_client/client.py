@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from datetime import datetime, timezone
 from dataclasses import dataclass
 import logging
@@ -192,10 +192,17 @@ class Client:
         assert isinstance(result, battery.BatteryInfo)
         return result
 
+    def _drain(self, command: int) -> None:
+        """Throw away queued results, e.g. readings left over from an earlier measurement."""
+        queue = self.queues[command]
+        while not queue.empty():
+            queue.get_nowait()
+
     async def _poll_real_time_reading(self, reading_type: real_time.RealTimeReading) -> list[int] | None:
         start_packet = real_time.get_start_packet(reading_type)
         stop_packet = real_time.get_stop_packet(reading_type)
 
+        self._drain(real_time.CMD_START_REAL_TIME)
         await self.send_packet(start_packet)
 
         valid_readings: list[int] = []
@@ -207,6 +214,8 @@ class Client:
                     self.queues[real_time.CMD_START_REAL_TIME].get(),
                     timeout=2,
                 )
+                if data.kind != reading_type:
+                    continue
                 if isinstance(data, real_time.ReadingError):
                     error = True
                     break
@@ -222,6 +231,41 @@ class Client:
 
     async def get_realtime_reading(self, reading_type: real_time.RealTimeReading) -> list[int] | None:
         return await self._poll_real_time_reading(reading_type)
+
+    async def stream_real_time(
+        self, reading_type: real_time.RealTimeReading, duration_s: float, keepalive_s: float = 10.0
+    ) -> AsyncIterator[real_time.Reading | real_time.ReadingError]:
+        """
+        Stream every real-time reading for `duration_s` seconds.
+
+        Each reading carries its arrival time (`timestamp`, Unix seconds). Zeros (no lock yet)
+        and errors are yielded too, so the caller can tell "no reading" from a value and skip
+        the ring's settling period itself. A continue packet is sent every `keepalive_s`
+        seconds to keep the measurement running; the stop packet is sent at the end, also
+        when the caller leaves the loop early.
+
+            async for r in client.stream_real_time(RealTimeReading.HEART_RATE, 60):
+                print(r.timestamp, r.value if isinstance(r, Reading) else f"error {r.code}")
+        """
+        queue = self.queues[real_time.CMD_START_REAL_TIME]
+        self._drain(real_time.CMD_START_REAL_TIME)
+        loop = asyncio.get_running_loop()
+        await self.send_packet(real_time.get_start_packet(reading_type))
+        end = loop.time() + duration_s
+        next_keepalive = loop.time() + keepalive_s
+        try:
+            while (now := loop.time()) < end:
+                if now >= next_keepalive:
+                    await self.send_packet(real_time.get_continue_packet(reading_type))
+                    next_keepalive = now + keepalive_s
+                try:
+                    data = await asyncio.wait_for(queue.get(), timeout=max(min(end, next_keepalive) - now, 0.01))
+                except TimeoutError:
+                    continue
+                if data.kind == reading_type:
+                    yield data
+        finally:
+            await self.send_packet(real_time.get_stop_packet(reading_type))
 
     async def set_time(self, ts: datetime) -> None:
         await self.send_packet(set_time.set_time_packet(ts))

@@ -7,6 +7,7 @@ HRV, ECG, blood pressure and blood sugar seem unlikely to be something you
 can correct
 """
 
+import time
 from dataclasses import dataclass
 from enum import IntEnum
 
@@ -61,12 +62,16 @@ CONTINUE_HEART_RATE_PACKET = make_packet(CMD_REAL_TIME_HEART_RATE, bytearray(b"3
 class Reading:
     kind: RealTimeReading
     value: int
+    timestamp: float = 0.0
+    """Unix time (s) when the packet was received; 0.0 if not set."""
 
 
 @dataclass
 class ReadingError:
     kind: RealTimeReading
     code: int
+    timestamp: float = 0.0
+    """Unix time (s) when the packet was received; 0.0 if not set."""
 
 
 def get_start_packet(reading_type: RealTimeReading) -> bytearray:
@@ -86,7 +91,8 @@ def parse_real_time_reading(packet: bytearray) -> Reading | ReadingError:
 
     kind = RealTimeReading(packet[1])
     error_code = packet[2]
+    timestamp = time.time()
     if error_code != 0:
-        return ReadingError(kind=kind, code=error_code)
+        return ReadingError(kind=kind, code=error_code, timestamp=timestamp)
 
-    return Reading(kind=kind, value=packet[3])
+    return Reading(kind=kind, value=packet[3], timestamp=timestamp)

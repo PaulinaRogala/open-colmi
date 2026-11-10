@@ -15,6 +15,7 @@ from bleak.backends.characteristic import BleakGATTCharacteristic
 from . import battery
 from . import blink_twice, date_utils, hr, hr_settings, packet, real_time, reboot, set_time, steps
 from . import raw_sensor_decoder
+from .packet import has_error_flag, is_valid
 
 UART_SERVICE_UUID = "6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -74,6 +75,10 @@ class Client:
         self.record_to = record_to
         self._packet_counter = 0
         self._received_sequence = {}
+        self.invalid_packets = 0
+        """Packets dropped because of a wrong length or checksum."""
+        self.error_packets = 0
+        """Packets the ring sent with the error flag set (command rejected)."""
 
     async def __aenter__(self) -> "Client":
         logger.info(f"Connecting to {self.address}")
@@ -113,23 +118,36 @@ class Client:
 
         logger.info(f"Received packet {packet}")
 
-        assert len(packet) == 16, f"Packet is the wrong length {packet}"
-        packet_type = packet[0]
-        #assert packet_type < 127, f"Packet has error bit set {packet}"
+        # Record every packet as received, before any check, so a recording can be decoded again.
+        if self.record_to is not None:
+            with self.record_to.open("ab") as f:
+                f.write(packet)
+                f.write(b"\n")
 
+        # An exception raised here is swallowed by bleak and the packet is lost silently, so
+        # bad packets are logged and counted instead of asserted.
+        if not is_valid(packet):
+            self.invalid_packets += 1
+            logger.warning(f"Dropped packet with wrong length or checksum: {bytes(packet).hex()}")
+            return
+        if has_error_flag(packet):
+            self.error_packets += 1
+            logger.warning(f"Ring answered command {packet[0] & 0x7F:#04x} with an error: {bytes(packet).hex()}")
+            return
+
+        packet_type = packet[0]
         if packet_type in COMMAND_HANDLERS:
-            result = COMMAND_HANDLERS[packet_type](packet)
+            try:
+                result = COMMAND_HANDLERS[packet_type](packet)
+            except (AssertionError, ValueError) as e:
+                logger.warning(f"Could not parse packet {bytes(packet).hex()}: {e!r}")
+                return
             if result is not None:
                 self.queues[packet_type].put_nowait(result)
             else:
                 logger.debug(f"No result returned from parser for {packet_type}")
         else:
             logger.warning(f"Did not expect this packet: {packet}")
-
-        if self.record_to is not None:
-            with self.record_to.open("ab") as f:
-                f.write(packet)
-                f.write(b"\n")
 
     def get_delays(self)->list[float]:
         """Return time intervals between consecutive received packets.

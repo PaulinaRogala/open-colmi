@@ -25,7 +25,27 @@ def checksum(packet: bytearray) -> int:
     """
     Packet checksum
 
-    Add all the bytes together modulus 255
+    Add all the bytes together modulo 256 (keep the lowest byte)
     """
 
     return sum(packet) & 255
+
+
+PACKET_LENGTH = 16
+ERROR_FLAG = 0x80
+
+
+def is_valid(packet: bytes | bytearray) -> bool:
+    """
+    True if a received packet is 16 bytes long and its last byte is the checksum of the
+    first 15. A packet that fails this was corrupted and must not be parsed.
+    """
+    return len(packet) == PACKET_LENGTH and checksum(bytearray(packet[:-1])) == packet[-1]
+
+
+def has_error_flag(packet: bytes | bytearray) -> bool:
+    """
+    True if the ring answered with the error flag: the top bit of the command byte is set
+    (e.g. 0xE9 instead of 0x69), meaning it rejected or could not run the command.
+    """
+    return bool(packet[0] & ERROR_FLAG)

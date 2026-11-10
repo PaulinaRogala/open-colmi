@@ -50,14 +50,14 @@ class PPGProcessor:
         Returns:
             Filtered PPG signal
         """
-        if len(ppg_signal)<50:
-            return ppg_signal
-        
         nyquist=0.5*self.sampling_rate
         if highcut>=nyquist:
             raise ValueError(
                 f"sampling rate {self.sampling_rate:g} Hz is too low for a {highcut:g} Hz band edge "
                 f"(needs > {2*highcut:g} Hz); heart rate cannot be resolved from this signal")
+
+        if len(ppg_signal)<50:
+            return ppg_signal
         low=lowcut/nyquist
         high=highcut/nyquist
 

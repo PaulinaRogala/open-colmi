@@ -71,3 +71,14 @@ def test_stream_sends_stop_when_the_caller_leaves_early():
         return client
 
     assert asyncio.run(run()).sent[-1] == real_time.get_stop_packet(HR)
+
+
+def test_continue_packet_carries_the_number_3_not_ascii():
+    assert real_time.CONTINUE_HEART_RATE_PACKET[:2] == bytearray([0x1E, 0x03])
+
+
+def test_command_30_heart_rate_is_parsed_and_queued():
+    client = Client("00:00:00:00:00:00")
+    client._handle_tx(None, make_packet(real_time.CMD_REAL_TIME_HEART_RATE, bytearray([64])))
+    r = client.queues[real_time.CMD_REAL_TIME_HEART_RATE].get_nowait()
+    assert isinstance(r, real_time.RealtimeHeartRate) and r.value == 64 and r.timestamp > 0

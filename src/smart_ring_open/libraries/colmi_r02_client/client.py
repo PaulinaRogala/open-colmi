@@ -49,6 +49,7 @@ COMMAND_HANDLERS: dict[int, Callable[[bytearray], Any]] = {
     battery.CMD_BATTERY: battery.parse_battery,
     real_time.CMD_START_REAL_TIME: real_time.parse_real_time_reading,
     real_time.CMD_STOP_REAL_TIME: empty_parse,
+    real_time.CMD_REAL_TIME_HEART_RATE: real_time.parse_realtime_heart_rate,
     steps.CMD_GET_STEP_SOMEDAY: steps.SportDetailParser().parse,
     hr.CMD_READ_HEART_RATE: hr.HeartRateLogParser().parse,
     set_time.CMD_SET_TIME: empty_parse,

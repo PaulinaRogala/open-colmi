@@ -34,9 +34,10 @@ class AccelerometerRawData:
     """
     Raw accelerometer data from Colmi R02.
     Attributes:
-        accX (float): Acceleration on the X-axis in G-forces.
-        accY (float): Acceleration on the Y-axis in G-forces.
-        accZ (float): Acceleration on the Z-axis in G-forces.
+        accX (float): Acceleration on the X-axis, raw signed 12-bit counts (-2048..2047).
+        accY (float): Acceleration on the Y-axis, raw signed 12-bit counts.
+        accZ (float): Acceleration on the Z-axis, raw signed 12-bit counts.
+        The counts-per-g scale depends on the sensor's range setting, which is not decoded here.
         timestamp (float): Unix timestamp (seconds since epoch) when the packet was received.
     """
     accX: float
@@ -60,6 +61,12 @@ class PPGRawData:
     ppg_min: int
     ppg_diff: int
     timestamp: float
+
+def _signed_12bit(hi: int, lo: int) -> int:
+    """12-bit two's complement from the high byte and the low nibble of the next byte."""
+    value = (hi << 4) | (lo & 0xF)
+    return value - (1 << 12) if value & (1 << 11) else value
+
 
 def decode_raw_sensor_packet(data: bytearray)->SpO2RawData|PPGRawData|AccelerometerRawData|None:
     """
@@ -102,9 +109,10 @@ def decode_raw_sensor_packet(data: bytearray)->SpO2RawData|PPGRawData|Accelerome
         )
     
     elif subtype == 0x03:
-        accX = ((data[6] << 4) | (data[7] & 0xF)) - (1 << 11) if data[6] & 0x8 else ((data[6] << 4) | (data[7] & 0xF))
-        accY = ((data[2] << 4) | (data[3] & 0xF)) - (1 << 11) if data[2] & 0x8 else ((data[2] << 4) | (data[3] & 0xF))
-        accZ = ((data[4] << 4) | (data[5] & 0xF)) - (1 << 11) if data[4] & 0x8 else ((data[4] << 4) | (data[5] & 0xF))
+        # sign bit = bit 11 of the 12-bit value = bit 7 of the high byte (was: bit 3, minus 2048)
+        accX = _signed_12bit(data[6], data[7])
+        accY = _signed_12bit(data[2], data[3])
+        accZ = _signed_12bit(data[4], data[5])
         return AccelerometerRawData(
             accX=accX,
             accY=accY,

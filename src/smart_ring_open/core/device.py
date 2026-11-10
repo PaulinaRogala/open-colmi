@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 class RingDevice(ABC):
     """Common interface for every smart ring"""

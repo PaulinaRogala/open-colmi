@@ -7,6 +7,7 @@ HRV, ECG, blood pressure and blood sugar seem unlikely to be something you
 can correct
 """
 
+import time
 from dataclasses import dataclass
 from enum import IntEnum
 
@@ -54,19 +55,43 @@ CMD_START_REAL_TIME = 105
 CMD_STOP_REAL_TIME = 106
 
 CMD_REAL_TIME_HEART_RATE = 30
-CONTINUE_HEART_RATE_PACKET = make_packet(CMD_REAL_TIME_HEART_RATE, bytearray(b"3"))
+# [0x1E, 0x03]: the type byte is the number 3 (Gadgetbridge, Puxtril's colmi-docs, openring).
+# It was bytearray(b"3"), i.e. 0x33 (ASCII '3'), inherited from colmi_r02_client.
+CONTINUE_HEART_RATE_PACKET = make_packet(CMD_REAL_TIME_HEART_RATE, bytearray([3]))
 
 
 @dataclass
 class Reading:
     kind: RealTimeReading
     value: int
+    timestamp: float = 0.0
+    """Unix time (s) when the packet was received; 0.0 if not set."""
 
 
 @dataclass
 class ReadingError:
     kind: RealTimeReading
     code: int
+    timestamp: float = 0.0
+    """Unix time (s) when the packet was received; 0.0 if not set."""
+
+
+@dataclass
+class RealtimeHeartRate:
+    """
+    The ring's own computed heart rate from command 30 (0x1E): [0x1E, bpm, ...].
+    0 means not computed yet. Layout per Gadgetbridge (YawellRingPacketHandler.realtimeHeartRate),
+    Puxtril's colmi-docs and openring; openring reports that on its firmware this is where the
+    BPM appears, while byte 3 of the command-105 reply stays 0.
+    """
+    value: int
+    timestamp: float = 0.0
+    """Unix time (s) when the packet was received; 0.0 if not set."""
+
+
+def parse_realtime_heart_rate(packet: bytearray) -> RealtimeHeartRate:
+    assert packet[0] == CMD_REAL_TIME_HEART_RATE
+    return RealtimeHeartRate(value=packet[1], timestamp=time.time())
 
 
 def get_start_packet(reading_type: RealTimeReading) -> bytearray:
@@ -86,7 +111,8 @@ def parse_real_time_reading(packet: bytearray) -> Reading | ReadingError:
 
     kind = RealTimeReading(packet[1])
     error_code = packet[2]
+    timestamp = time.time()
     if error_code != 0:
-        return ReadingError(kind=kind, code=error_code)
+        return ReadingError(kind=kind, code=error_code, timestamp=timestamp)
 
-    return Reading(kind=kind, value=packet[3])
+    return Reading(kind=kind, value=packet[3], timestamp=timestamp)

@@ -21,6 +21,19 @@ class FilteredPPG:
     peaks: PPGPeaks|None
     timestamp:list|None
 
+def sampling_rate_from_timestamps(timestamps) -> float:
+    """
+    Sampling rate [Hz] from sample times [s]: 1 / median interval.
+    Use the measured rate, not an assumed one: the stock Colmi R02 firmware sends raw PPG at
+    about 1 sample/s, and peak intervals scale with the rate given to PPGProcessor.
+    """
+    intervals = np.diff(np.asarray(timestamps, dtype=float))
+    intervals = intervals[intervals > 0]
+    if len(intervals) == 0:
+        raise ValueError("need at least two increasing timestamps")
+    return float(1.0 / np.median(intervals))
+
+
 class PPGProcessor:
     def __init__(self, sampling_rate: float):
         self.sampling_rate = sampling_rate
@@ -37,10 +50,14 @@ class PPGProcessor:
         Returns:
             Filtered PPG signal
         """
+        nyquist=0.5*self.sampling_rate
+        if highcut>=nyquist:
+            raise ValueError(
+                f"sampling rate {self.sampling_rate:g} Hz is too low for a {highcut:g} Hz band edge "
+                f"(needs > {2*highcut:g} Hz); heart rate cannot be resolved from this signal")
+
         if len(ppg_signal)<50:
             return ppg_signal
-        
-        nyquist=0.5*self.sampling_rate
         low=lowcut/nyquist
         high=highcut/nyquist
 
@@ -65,11 +82,13 @@ class PPGProcessor:
             min_distance=int(self.sampling_rate/3.67)
             distance=max(min_distance,1)
 
+        signal_range=np.max(filtered_signal)-np.min(filtered_signal)
         if height is None:
-            #height as 50% of signal range
-            height=(np.max(filtered_signal)-np.min(filtered_signal))*0.5
+            #height at 50% of the signal range, measured from the minimum: the band-passed
+            #signal is centred on zero, so 50% of the range from zero is the peak top itself
+            height=np.min(filtered_signal)+signal_range*0.5
 
-        peaks, properties=signal.find_peaks(filtered_signal, height=height,distance=distance,prominence=height*0.3 )
+        peaks, properties=signal.find_peaks(filtered_signal, height=height,distance=distance,prominence=signal_range*0.3 )
         peak_values=filtered_signal[peaks]
         peak_times=peaks/self.sampling_rate
 

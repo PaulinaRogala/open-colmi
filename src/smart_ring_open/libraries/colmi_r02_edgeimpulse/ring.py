@@ -8,11 +8,12 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import requests
+from smart_ring_open.libraries.colmi_r02_client.packet import is_valid
 from smart_ring_open.libraries.colmi_r02_client.raw_sensor_decoder import (
     decode_raw_sensor_packet,
     ENABLE_RAW_SENSOR_CMD,
     DISABLE_RAW_SENSOR_CMD,
-    PPGRawData, AccelerometerRawData, SpO2RawData
+    PPGRawData, AccelerometerRawData, SpO2RawData, RAW_SENSOR_CMD_TYPE
 )
 
 # UUIDs for MAIN and RXTX services and characteristics
@@ -24,6 +25,8 @@ RXTX_WRITE_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 RXTX_NOTIFY_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 all_rows=[]
 packet_counter=0
+skipped_packets=0  # raw sensor packets with a wrong length or checksum
+partial_writer=None  # rows are also written here as they arrive, so a crash keeps them
 # Commands
 def create_command(hex_string):
     bytes_array = [int(hex_string[i:i+2], 16) for i in range(0, len(hex_string), 2)]
@@ -42,12 +45,11 @@ CONFIG_FILE = "config.json"
 DATA_FOLDER = "raw_data"
 INGESTION_URL = "https://ingestion.edgeimpulse.com"  # Base URL for ingestion
 
-# Ensure folder exists
-os.makedirs(DATA_FOLDER, exist_ok=True)
-
-# Create filename with current timestamp
-timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = os.path.join(DATA_FOLDER, f"ring_data_{timestamp_now}.csv")
+CSV_HEADER = [
+    "timestamp", "payload", "accX", "accY", "accZ",
+    "ppg", "ppg_max", "ppg_min", "ppg_diff",
+    "spO2", "spO2_max", "spO2_min", "spO2_diff"
+]
 
 # Utils functions 
 
@@ -80,6 +82,8 @@ def resample_data(input_file, resample_ms, columns, output_path=None):
             out_f.writelines(metadata_lines)
             out_f.write(f"# resampled: {frequency}\n")
             out_f.write(f"# interpolation method: linear\n")
+            out_f.write("# not for heart rate: values between the ring's samples are interpolated, "
+                        "use the raw file\n")
             out_f.write(f"# resampled columns: {','.join(columns)}\n")
             out_f.write(f"# resampled_timestamp: {datetime.now().isoformat()}\n")
             out_f.write("# ============\n\n")
@@ -171,7 +175,13 @@ def upload_to_edge_impulse(fullpath, label, api_key, category="training", metada
 
 
 async def handle_notification(sender: int, data: bytearray):
-        global packet_counter
+        global packet_counter, skipped_packets
+        if not data or data[0] != RAW_SENSOR_CMD_TYPE:
+            return  # not raw sensor data (e.g. the battery reply)
+        if not is_valid(data):
+            skipped_packets+=1
+            print(f"Skipped corrupted packet: {bytes(data).hex()}")
+            return
         decoded = decode_raw_sensor_packet(data)
         if decoded is None:
             return
@@ -186,6 +196,8 @@ async def handle_notification(sender: int, data: bytearray):
             row += ["", "", "", "", "", "", "", decoded.spo2, decoded.spo2_max, decoded.spo2_min, decoded.spo2_diff]
 
         all_rows.append(row)
+        if partial_writer is not None:
+            partial_writer.writerow(row)
         packet_counter+=1 
         print(f"Saved: {timestamp} | Payload: {data.hex()}")  # Confirm write
 
@@ -228,7 +240,12 @@ async def select_device():
 # Main
 async def main(duration, label, columns, resample_ms, plot, ei_upload):
     """Main function with specified duration (seconds) for the reading."""
-    
+    global partial_writer
+    os.makedirs(DATA_FOLDER, exist_ok=True)
+    timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = os.path.join(DATA_FOLDER, f"ring_data_{timestamp_now}.csv")
+    partial_path = filename + ".partial"
+
     device_address = load_device_address()
     if not device_address:
         selected_device = await select_device()
@@ -246,7 +263,10 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
         print(f"Connected to device with address {device_address}!")
         
         start_time=datetime.now()
-        
+        partial_file=open(partial_path, mode='w', newline='', buffering=1)
+        partial_writer=csv.writer(partial_file)
+        partial_writer.writerow(CSV_HEADER)
+
         await client.start_notify(MAIN_NOTIFY_CHARACTERISTIC_UUID, handle_notification)
         await client.start_notify(RXTX_NOTIFY_CHARACTERISTIC_UUID, handle_notification)
 
@@ -279,6 +299,7 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
                 csv_file.write(f"# end_time: {end_time.isoformat()}\n")
                 csv_file.write(f"# duration_seconds: {duration_seconds:.3f}\n")
                 csv_file.write(f"# packet_count: {packet_counter}\n")
+                csv_file.write(f"# skipped_packets: {skipped_packets}\n")
                 csv_file.write(f"# sensors: acc, ppg, spo2\n")
                 csv_file.write(f"# label: {label}\n")
                 csv_file.write(f"# plot_enabled: {plot}\n")
@@ -286,13 +307,12 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
                 csv_file.write("# ============\n\n")  
             
                 csv_writer = csv.writer(csv_file)
-                csv_writer.writerow([
-                    "timestamp", "payload", "accX", "accY", "accZ",
-                    "ppg", "ppg_max", "ppg_min", "ppg_diff",
-                    "spO2", "spO2_max", "spO2_min", "spO2_diff"
-                ])
+                csv_writer.writerow(CSV_HEADER)
                 csv_writer.writerows(all_rows)
             print(f"Data saved to {filename}")
+            partial_writer=None
+            partial_file.close()
+            os.remove(partial_path)  # the complete file is written; a crash before this keeps the .partial
 
             if resample_ms:
                 resampled_output_path = os.path.join("resampled", f"{label}.{os.path.basename(filename)}") if label else f"resampled/{os.path.basename(filename)}"

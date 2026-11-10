@@ -47,3 +47,13 @@ def test_unknown_reading_kind_does_not_raise():
     client = Client("00:00:00:00:00:00")
     client._handle_tx(None, make_packet(real_time.CMD_START_REAL_TIME, bytearray([6, 0, 72])))  # kind 6 not in the enum
     assert queued(client) == []
+
+
+def test_raw_sensor_packets_are_not_error_replies():
+    # 0xA1 has its top bit set but is a command of its own, not 0x21 with the error flag
+    from src.smart_ring_open.libraries.colmi_r02_client import raw_sensor_decoder
+    client = Client("00:00:00:00:00:00")
+    client._handle_tx(None, bytearray(bytes.fromhex("a102066320281f5100d700000000009b")))
+    assert client.error_packets == 0
+    q = client.queues[raw_sensor_decoder.RAW_SENSOR_CMD_TYPE]
+    assert isinstance(q.get_nowait(), raw_sensor_decoder.PPGRawData)

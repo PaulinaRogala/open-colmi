@@ -130,7 +130,7 @@ class Client:
             self.invalid_packets += 1
             logger.warning(f"Dropped packet with wrong length or checksum: {bytes(packet).hex()}")
             return
-        if has_error_flag(packet):
+        if has_error_flag(packet, COMMAND_HANDLERS):
             self.error_packets += 1
             logger.warning(f"Ring answered command {packet[0] & 0x7F:#04x} with an error: {bytes(packet).hex()}")
             return

@@ -43,9 +43,12 @@ def is_valid(packet: bytes | bytearray) -> bool:
     return len(packet) == PACKET_LENGTH and checksum(bytearray(packet[:-1])) == packet[-1]
 
 
-def has_error_flag(packet: bytes | bytearray) -> bool:
+def has_error_flag(packet: bytes | bytearray, known_commands=()) -> bool:
     """
     True if the ring answered with the error flag: the top bit of the command byte is set
     (e.g. 0xE9 instead of 0x69), meaning it rejected or could not run the command.
+
+    Some commands are 0x80 or above themselves (0xA1, raw sensor data) and are not errors:
+    pass the commands the caller handles as `known_commands` and those never count as errors.
     """
-    return bool(packet[0] & ERROR_FLAG)
+    return bool(packet[0] & ERROR_FLAG) and packet[0] not in known_commands

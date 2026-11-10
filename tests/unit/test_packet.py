@@ -20,3 +20,10 @@ def test_corrupted_or_short_packets_are_invalid():
 def test_error_flag_is_the_top_bit_of_the_command():
     assert has_error_flag(make_packet(0x69 | 0x80))
     assert not has_error_flag(make_packet(0x69))
+
+
+def test_commands_at_or_above_0x80_are_not_errors_when_known():
+    raw = make_packet(0xA1, bytearray([0x02]))
+    assert has_error_flag(raw)  # the bit alone cannot tell
+    assert not has_error_flag(raw, known_commands={0xA1})
+    assert has_error_flag(make_packet(0xE9), known_commands={0xA1})
